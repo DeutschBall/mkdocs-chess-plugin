@@ -166,9 +166,9 @@ async function mount(figure) {
   let drawing = null;
   let suppressClick = false;
 
-  const undo = makeButton('悔棋');
+  const undo = makeButton('上一步');
   undo.dataset.action = 'undo';
-  const redo = makeButton('撤销悔棋');
+  const redo = makeButton('下一步');
   redo.dataset.action = 'redo';
   const clearArrows = makeButton('清除箭头');
   clearArrows.dataset.action = 'clear-arrows';

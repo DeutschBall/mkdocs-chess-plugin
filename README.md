@@ -1,37 +1,31 @@
 # MkDocs Chess Plugin
 
-mkdocs博客的象棋插件。允许玩家使用FEN码绘制棋盘局面。
+An MkDocs plugin for embedding playable Xiangqi (Chinese chess) and chess positions from FEN.
 
+## Installation
 
-## 安装
-
-从PYPI库安装：
+Install the plugin from PyPI.
 
 ```bash
 pip install mkdocs-chess-plugin
 ```
 
-从本项目源码目录安装。
+To install from source, run the following command from the repository root.
 
 ```bash
 python -m pip install .
 ```
 
-在 `mkdocs.yml` 配置文件的插件列表中启用 `chess`。
+Add `chess` to the `plugins` list in `mkdocs.yml`.
 
 ```yaml
 plugins:
   - chess
 ```
 
-## 用法
+## Usage
 
->确保浏览器启用javascript。
->确保博客使用mkdocs框架搭建。
-
-棋盘块与mkdocs自带的折叠块语法基本相同。
-
-可以使用FEN码规定棋盘初始状态。
+Put the starting FEN in the title of an MkDocs details block. Use `xiang` for Xiangqi or `chess` for chess.
 
 ```markdown
 ??? xiang "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1"
@@ -41,45 +35,34 @@ plugins:
 ??? chess "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 ```
 
-可以在棋盘上点选或者拖动棋子走子。
+Enable JavaScript to play moves by selecting or dragging pieces. Right-drag to draw arrows, use **Previous move** and **Next move** to replay moves, and select **Export FEN** to copy the current position.
 
-支持鼠标右键拖动画线推演功能。
+## Configuration
 
-支持上一步/下一步功能。
+### Interface language
 
-支持导出实时推演局面的FEN码。
-
-## 自定义配置
-
-### 配置界面语言
-
-`language` 同时应用于中国象棋和国际象棋的块标题、按钮、走棋提示和无障碍标签。
+`language` sets the board headings, buttons, move prompts, and accessibility labels for both games.
 
 ```yaml
 plugins:
   - search
   - chess:
-      # 候选：zh（中文）、en（英语）、ru（俄语）、vi（越南语）
-      #       ko（韩语）、ja（日语）、de（德语）、fr（法语）
-      language: zh
+      # Options: zh (Chinese), en (English), ru (Russian), vi (Vietnamese),
+      #          ko (Korean), ja (Japanese), de (German), fr (French)
+      language: en
 ```
 
-
-### 配置走棋音效
+### Move sounds
 
 ```yaml
 plugins:
   - search
   - chess:
-      # 候选：chesscom（Chess.com）、tiantian（天天象棋）
+      # Options: chesscom (Chess.com, default), tiantian (Tian Tian Xiangqi)
       sounds: chesscom
 ```
 
-省略 `sounds` 时选用 `chesscom`。两套音效各包含落子和吃子，选好名称即可。
-站点维护者将有使用权限的音效包放到配置文件旁的 `sound-packs/chesscom/` 或 `sound-packs/tiantian/`，包内包含 `move.ogg` 和 `capture.ogg`。站点没有对应的音效包时，棋盘以静音方式运行。
-
-### 配置棋盘与棋子样式
-
+### Board and piece styles
 
 ```yaml
 plugins:
@@ -87,38 +70,30 @@ plugins:
   - chess:
       defaults:
         xiang:
-          # board 候选：default（经典）、wood（木纹）、green（青绿）
+          # Board options: default (classic), wood (wood grain), green (jade green)
           board: wood
-          # pieces 候选：default（经典）、ivory（象牙白）、ink（墨黑）、wood（木色）
+          # Piece options: default (classic), ivory, ink (dark), wood (warm wood)
           pieces: ivory
         chess:
-          # board 候选：default（经典）、wood（木纹）、green（绿白格）
+          # Board options: default (classic), wood (wood grain), green (green and cream)
           board: green
-          # pieces 候选：default（经典）、ivory（象牙白与深棕）、ink（黑白）
+          # Piece options: default (classic), ivory (ivory and brown), ink (black and white)
           pieces: ivory
 ```
 
-文章中也可以用 `board-<名称>` 和 `pieces-<名称>` 临时覆盖站点默认样式。
+Override the site defaults for a single board with `board-<name>` and `pieces-<name>`.
 
 ```markdown
 ??? xiang board-green pieces-ink "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1"
 ```
 
+## Adding a game
 
+The `BOARD_TYPES` registry in `markdown.py` defines each game's dimensions, FEN validation, and SVG rendering. Register a new type there and add a rules adapter with the same name in `board.mjs`. For example, a registered `shogun` type would use `??? shogun "POSITION"`. The current types are `chess` and `xiang`.
 
-## 扩展棋种
+## Building the package
 
-Markdown 块的棋种名来自 `markdown.py` 中的 `BOARD_TYPES`，每项注册布局尺寸、FEN 字段校验和 SVG 渲染函数。
-
-新增棋种时，为同名项接入 `board.mjs` 的规则适配器。
-
-比如将来注册 `shogun` 后，可用 `??? shogun "局面编码"`。
-
-本版本注册了 `chess` 和 `xiang`。
-
-## 打包
-
-在此目录运行以下命令生成源码包和 wheel，并校验发布元数据。
+Run these commands from the repository root to build the source distribution and wheel, then check the package metadata.
 
 ```bash
 python -m pip install build twine

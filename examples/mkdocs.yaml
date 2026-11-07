@@ -1,0 +1,45 @@
+# 安装 mkdocs-chess-plugin 后，可将本文件复制到站点根目录。
+# 已有 MkDocs 配置时，将 chess 条目合并到现有的 plugins 列表中。
+site_name: FEN 棋盘示例
+
+plugins:
+  - search
+  - chess:
+      # 注册自定义棋盘或棋子主题。名称使用小写字母、数字和连字符，
+      # 且以字母或数字开头。default 是插件内置样式的保留名。
+      # 路径相对于本配置文件，指向实际存在的 JSON 素材清单。
+      themes: {}
+        # 启用时删除上面的 {}，并取消所需条目的注释。
+        # xiangqicom: themes/xiangqicom/theme.json
+        # chess-neo: themes/chess-neo/theme.json
+
+      # 两种棋类分别配置棋盘和棋子。每项可用 default 或已注册的同棋种主题名。
+      # 如需自定义主题，先在 themes 注册，再把相应的 default 改成主题名。
+      defaults:
+        xiang:
+          board: default
+          pieces: default
+        chess:
+          board: default
+          pieces: default
+
+      # move 对应普通走子，capture 对应吃子。省略的事件静音。
+      # 支持 MP3、Ogg、WAV。路径相对于本配置文件。
+      sounds: {}
+        # 启用时删除上面的 {}，并取消所需条目的注释。
+        # move: sounds/move.ogg
+        # capture: sounds/capture.ogg
+
+# 单个 Markdown 棋盘可用 board-<主题名> 和 pieces-<主题名> 覆盖站点默认值。
+# 例如 ??? xiang board-xiangqicom pieces-default "FEN"
+#
+# theme.json 字段速查
+# - game 为 xiang 或 chess。board 和 pieces 至少提供一项。
+# - board.image 是棋盘图文件名，board.size 是 [宽, 高]。
+# - board.origin 是左上落点的 [x, y]，board.step 是横纵间距 [dx, dy]。
+#   棋盘坐标以图内像素为单位。象棋取交叉点，国际象棋取格子中心。
+# - pieces.images 将该棋种的全部 FEN 棋子字母映射到图片文件名。
+#   xiang 使用 KABNRCPkabnrcp，chess 使用 KQRBNPkqrbnp。
+# - pieces.scale 按落点间距缩放，默认 1。pieces.offset 为 [横向, 纵向] 偏移，
+#   单位为落点间距，默认 [0, 0]。正值向右或向下。
+# - 图片与 theme.json 放在同一目录，支持 SVG、PNG、JPEG、GIF、WebP。

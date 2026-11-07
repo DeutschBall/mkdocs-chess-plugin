@@ -8,27 +8,38 @@ plugins:
       # 注册自定义棋盘或棋子主题。名称使用小写字母、数字和连字符，
       # 且以字母或数字开头。default 是插件内置样式的保留名。
       # 路径相对于本配置文件，指向实际存在的 JSON 素材清单。
+      # 下列主题已在预览中接入，清单和图片需由站点自行提供。
       themes: {}
         # 启用时删除上面的 {}，并取消所需条目的注释。
-        # xiangqicom: themes/xiangqicom/theme.json
-        # chess-neo: themes/chess-neo/theme.json
+        # tiantian: themes/tiantian/theme.json  # 天天象棋经典木纹棋盘、灰白棋子
+        # tiantian-heibai: themes/tiantian-heibai/theme.json  # 天天象棋黑底白字棋子
+        # tiantian-wood: themes/tiantian-wood/theme.json  # 天天象棋木质棋子
+        # xqwizard: themes/xqwizard/theme.json  # 象棋巫师木纹棋盘、红蓝棋子
+        # xiangqicom: themes/xiangqicom/theme.json  # Xiangqi.com 木纹棋盘、红黑白字棋子
+        # chesscom: themes/chesscom/theme.json  # Chess.com 绿白棋盘、Neo 棋子
 
       # 两种棋类分别配置棋盘和棋子。每项可用 default 或已注册的同棋种主题名。
       # 如需自定义主题，先在 themes 注册，再把相应的 default 改成主题名。
       defaults:
         xiang:
+          # board 候选项：default、tiantian、xqwizard、xiangqicom
           board: default
+          # pieces 候选项：default、tiantian、tiantian-heibai、tiantian-wood、xqwizard、xiangqicom
           pieces: default
         chess:
+          # board 候选项：default、chesscom
           board: default
+          # pieces 候选项：default、chesscom
           pieces: default
 
       # move 对应普通走子，capture 对应吃子。省略的事件静音。
       # 支持 MP3、Ogg、WAV。路径相对于本配置文件。
       sounds: {}
-        # 启用时删除上面的 {}，并取消所需条目的注释。
-        # move: sounds/move.ogg
-        # capture: sounds/capture.ogg
+        # 当前音效候选为 Chess.com 默认音效，音频文件需由站点自行提供。
+        # 启用时删除上面的 {}，并取消下面两行的注释。
+        # move: sounds/chesscom/move-self.ogg
+        # capture: sounds/chesscom/capture.ogg
+        # 后续加入其他音效套装时，将 move 和 capture 换成对应文件路径。
 
 # 单个 Markdown 棋盘可用 board-<主题名> 和 pieces-<主题名> 覆盖站点默认值。
 # 例如 ??? xiang board-xiangqicom pieces-default "FEN"

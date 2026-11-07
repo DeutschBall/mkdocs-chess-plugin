@@ -1,64 +1,74 @@
+import {locales} from './locales.mjs';
+
 const SVG = 'http://www.w3.org/2000/svg';
-const PROMOTIONS = {q: '后', r: '车', b: '象', n: '马'};
-const CHESS_NAMES = {k: '王', q: '后', r: '车', b: '象', n: '马', p: '兵'};
 const mounted = new WeakSet();
 const arrowDirections = {ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0]};
 const pointerMoved = (event, gesture) => Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) >= 5;
 const pieceSide = piece => piece === piece.toUpperCase() ? 'w' : 'b';
 
-async function xiangEngine(position) {
+async function xiangEngine(position, language) {
   const rules = await import('./xiangqi-rules.mjs');
-  const states = [rules.parseFen(position)];
+  const copy = locales[language];
+  let initial;
+  try { initial = rules.parseFen(position); }
+  catch (error) {
+    if (language === 'zh') throw error;
+    throw new Error(copy.invalidXiang, {cause: error});
+  }
+  const states = [initial];
   const current = () => states.at(-1);
   return {
     turn: () => current().turn,
     position: () => rules.fen(current()),
     board: () => current().board,
-    name: piece => rules.names[piece],
+    name: piece => copy.xiangPieces?.[piece.toLowerCase()] ?? rules.names[piece],
     square: rules.coord,
     candidates: from => rules.moves(current(), rules.index(from)).map(move => ({from, to: move.slice(2)})),
     play: ({from, to}) => {
       const move = from + to;
-      const label = rules.notation(current(), move);
+      const label = language === 'zh' ? rules.notation(current(), move) : `${from}–${to}`;
       const capture = Boolean(current().board[rules.index(to)]);
       states.push(rules.play(current(), move));
       return {label, capture};
     },
     undo: () => states.pop(),
     status: () => {
-      if (rules.moves(current()).length === 0) return rules.inCheck(current()) ? '将死' : '困毙';
-      return rules.inCheck(current()) ? '将军' : '';
+      if (rules.moves(current()).length === 0) return rules.inCheck(current()) ? 'checkmate' : 'xiangStalemate';
+      return rules.inCheck(current()) ? 'check' : '';
     },
   };
 }
 
-async function chessEngine(position) {
+async function chessEngine(position, language) {
   const {Chess} = await import('./vendor/chess-1.4.0.mjs');
-  const game = new Chess(position);
+  const copy = locales[language];
+  let game;
+  try { game = new Chess(position); }
+  catch (error) { throw new Error(copy.invalidChess, {cause: error}); }
   const turn = game.turn();
   const opposingKing = game.findPiece({type: 'k', color: turn === 'w' ? 'b' : 'w'})[0];
-  if (game.isAttacked(opposingKing, turn)) throw new Error('非行棋方处于被将军状态');
+  if (game.isAttacked(opposingKing, turn)) throw new Error(copy.opposingKingInCheck);
   const [, , rights, ep] = position.split(' ');
   for (const [flag, color, rank, rook] of [['K', 'w', 1, 'h'], ['Q', 'w', 1, 'a'], ['k', 'b', 8, 'h'], ['q', 'b', 8, 'a']]) {
     if (!rights.includes(flag)) continue;
     const king = game.get('e' + rank);
     const piece = game.get(rook + rank);
     if (king?.type !== 'k' || king.color !== color || piece?.type !== 'r' || piece.color !== color) {
-      throw new Error('易位权与王、车位置不符');
+      throw new Error(copy.castling);
     }
   }
   if (ep !== '-') {
     const pawn = game.get(ep[0] + (turn === 'w' ? '5' : '4'));
     const origin = ep[0] + (turn === 'w' ? '7' : '2');
     if (game.get(ep) || game.get(origin) || pawn?.type !== 'p' || pawn.color === turn) {
-      throw new Error('过路兵目标格与兵的位置不符');
+      throw new Error(copy.enPassant);
     }
   }
   return {
     turn: () => game.turn(),
     position: () => game.fen({forceEnpassantSquare: true}),
     board: () => game.board().flat().map(piece => piece?.color === 'w' ? piece.type.toUpperCase() : piece?.type),
-    name: piece => CHESS_NAMES[piece.toLowerCase()],
+    name: piece => copy.chessPieces[piece.toLowerCase()],
     square: i => String.fromCharCode(97 + i % 8) + (8 - Math.floor(i / 8)),
     candidates: square => game.moves({square, verbose: true}),
     play: ({from, to, promotion}) => {
@@ -67,9 +77,9 @@ async function chessEngine(position) {
     },
     undo: () => game.undo(),
     status: () => {
-      if (game.isCheckmate()) return '将死';
-      if (game.isStalemate()) return '逼和';
-      return game.isCheck() ? '将军' : '';
+      if (game.isCheckmate()) return 'checkmate';
+      if (game.isStalemate()) return 'stalemate';
+      return game.isCheck() ? 'check' : '';
     },
   };
 }
@@ -89,8 +99,8 @@ function makeSvg(tag, attributes) {
   return node;
 }
 
-function addFenExport(controls, figure) {
-  const button = makeButton('导出 FEN');
+function addFenExport(controls, figure, copy) {
+  const button = makeButton(copy.exportFen);
   button.dataset.action = 'export-fen';
   const feedback = document.createElement('span');
   feedback.className = 'fen-board-status';
@@ -100,42 +110,44 @@ function addFenExport(controls, figure) {
   field.className = 'fen-board-fen-export';
   field.readOnly = true;
   field.hidden = true;
-  field.setAttribute('aria-label', '导出的 FEN');
+  field.setAttribute('aria-label', copy.exportedFen);
   controls.append(button, feedback, field);
   button.addEventListener('click', async () => {
     const position = figure.dataset.fen;
     try {
       await navigator.clipboard.writeText(position);
       field.hidden = true;
-      feedback.textContent = '已复制 FEN';
+      feedback.textContent = copy.copiedFen;
     } catch {
       field.value = position;
       field.hidden = false;
       field.focus();
       field.select();
-      feedback.textContent = '请手动复制 FEN';
+      feedback.textContent = copy.copyFenManually;
     }
   });
 }
 
-function showUnavailable(figure, error) {
+function showUnavailable(figure, copy, error) {
   const message = document.createElement('p');
   message.className = 'fen-board-status';
-  message.textContent = '此局面仅供展示，无法开始推演。' + error.message;
+  message.textContent = `${copy.unavailable}${figure.lang === 'zh' ? '' : ' '}${error.message}`;
   figure.append(message);
 }
 
 async function mount(figure) {
-  const {game, fen, prefix, grid, label, light} = figure.dataset;
+  const {game, fen, prefix, grid, label, light, dark = '黑', turnW = `${light}方走棋`, turnB = '黑方走棋'} = figure.dataset;
+  const language = Object.hasOwn(locales, figure.lang) ? figure.lang : 'zh';
+  const copy = locales[language];
   const controls = document.createElement('div');
   controls.className = 'fen-board-controls';
   let engine;
   try {
-    engine = await engines[game](fen);
+    engine = await engines[game](fen, language);
   } catch (error) {
     if (figure.isConnected) {
-      showUnavailable(figure, error);
-      addFenExport(controls, figure);
+      showUnavailable(figure, copy, error);
+      addFenExport(controls, figure, copy);
       figure.append(controls);
     }
     return;
@@ -166,17 +178,17 @@ async function mount(figure) {
   let drawing = null;
   let suppressClick = false;
 
-  const undo = makeButton('上一步');
+  const undo = makeButton(copy.previous);
   undo.dataset.action = 'undo';
-  const redo = makeButton('下一步');
+  const redo = makeButton(copy.next);
   redo.dataset.action = 'redo';
-  const clearArrows = makeButton('清除箭头');
+  const clearArrows = makeButton(copy.clearArrows);
   clearArrows.dataset.action = 'clear-arrows';
   const status = document.createElement('span');
   status.className = 'fen-board-status';
   status.setAttribute('role', 'status');
   controls.append(undo, redo, clearArrows);
-  addFenExport(controls, figure);
+  addFenExport(controls, figure, copy);
   controls.append(status);
   const promotion = document.createElement('div');
   promotion.className = 'fen-board-controls fen-board-promotion';
@@ -214,8 +226,12 @@ async function mount(figure) {
     return button;
   });
 
-  function sideLabel(turn) {
-    return turn === 'w' ? light : '黑';
+  function pieceLabel(piece) {
+    const side = pieceSide(piece) === 'w' ? light : dark;
+    const name = engine.name(piece);
+    if (language === 'zh') return side + name;
+    if (language === 'en') return `${side} ${name}`;
+    return `${name} (${side})`;
   }
 
   function resetAfterMove() {
@@ -305,7 +321,7 @@ async function mount(figure) {
 
   function render() {
     const turn = engine.turn();
-    const title = label + ' · ' + sideLabel(turn) + '方走棋';
+    const title = `${label} · ${turn === 'w' ? turnW : turnB}`;
     if (block.tagName !== 'DETAILS') heading.textContent = title;
     block.dataset.turn = turn;
     svg.setAttribute('aria-label', title);
@@ -318,7 +334,7 @@ async function mount(figure) {
       const button = buttons[i];
       const square = button.dataset.square;
       const side = piece && pieceSide(piece);
-      const name = piece ? sideLabel(side) + engine.name(piece) : '空位';
+      const name = piece ? pieceLabel(piece) : copy.empty;
       button.setAttribute('aria-label', square + ' ' + name);
       button.classList.toggle('fen-board-draggable', side === turn);
       const from = last?.move.from === square;
@@ -342,7 +358,7 @@ async function mount(figure) {
     renderArrows();
     undo.disabled = history.length === 0;
     redo.disabled = future.length === 0;
-    status.textContent = [last?.label, engine.status()].filter(Boolean).join(' · ') || '点选或拖动棋子开始推演';
+    status.textContent = [last?.label, copy[engine.status()]].filter(Boolean).join(' · ') || copy.start;
   }
 
   function playSound(capture) {
@@ -367,17 +383,18 @@ async function mount(figure) {
   function choosePromotion(candidates, index) {
     promotion.hidden = false;
     const label = document.createElement('span');
-    label.textContent = '升变为';
+    label.textContent = copy.promote;
     promotion.append(label);
     for (const move of candidates) {
-      const button = makeButton(PROMOTIONS[move.promotion]);
+      const name = copy.chessPieces[move.promotion];
+      const button = makeButton(name[0].toUpperCase() + name.slice(1));
       button.addEventListener('click', () => {
         play(move);
         buttons[index].focus();
       });
       promotion.append(button);
     }
-    const cancel = makeButton('取消');
+    const cancel = makeButton(copy.cancel);
     cancel.addEventListener('click', () => {
       promotion.hidden = true;
       promotion.replaceChildren();

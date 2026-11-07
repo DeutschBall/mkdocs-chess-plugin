@@ -9,7 +9,8 @@ from markdown.extensions import Extension
 from markdown.treeprocessors import Treeprocessor
 from mkdocs.exceptions import PluginError
 
-from .themes import Geometry, ThemeCatalog
+from .localization import POSITION_LOCALES
+from .themes import BoardImage, Geometry, PieceImages, ThemeCatalog
 
 
 XIANG_NAMES = dict(zip("KABNRCPkabnrcp", "帅仕相马车炮兵将士象马车炮卒"))
@@ -177,20 +178,41 @@ def artwork_image(parent, uri, x, y, width, height):
     })
 
 
-def king_icons(title, style, pieces):
+def king_icons(title, style, piece_theme):
     for side, king in (("w", "K"), ("b", "k")):
         icon = ET.SubElement(title, "svg", {
             "class": "fen-board-icon", "data-color": side, "viewBox": "-24 -24 48 48",
             "aria-hidden": "true", "focusable": "false", "xmlns": "http://www.w3.org/2000/svg",
         })
-        if pieces:
-            artwork_image(icon, pieces.images[king], -24, -24, 48, 48)
+        if isinstance(piece_theme, PieceImages):
+            artwork_image(icon, piece_theme.images[king], -24, -24, 48, 48)
         else:
+            if isinstance(piece_theme, str):
+                icon.set("data-pieces-style", piece_theme)
             style.draw_piece(ET.SubElement(icon, "g"), king)
 
 
-def diagram(board, position, game, prefix, label, board_image, piece_images):
+def position_text(game, language):
     style = BOARD_TYPES[game]
+    locale = POSITION_LOCALES.get(language)
+    if locale:
+        label = {"xiang": locale.xiang_label, "chess": locale.chess_label}.get(game, locale.title)
+        light, turn_w = locale.red if game == "xiang" else locale.white
+        dark, turn_b = locale.black
+        return {
+            "lang": language, "data-label": label, "data-light": light, "data-dark": dark,
+            "data-turn-w": turn_w, "data-turn-b": turn_b,
+        }
+    return {
+        "lang": "zh", "data-label": style.label, "data-light": style.light, "data-dark": "黑",
+        "data-turn-w": f"{style.light}方走棋", "data-turn-b": "黑方走棋",
+    }
+
+
+def diagram(board, position, game, prefix, label, board_theme, piece_theme, text):
+    style = BOARD_TYPES[game]
+    board_image = board_theme if isinstance(board_theme, BoardImage) else None
+    piece_images = piece_theme if isinstance(piece_theme, PieceImages) else None
     geometry = board_image.geometry if board_image else Geometry(
         480, style.height, style.origin, style.origin, style.step, style.step,
     )
@@ -200,10 +222,14 @@ def diagram(board, position, game, prefix, label, board_image, piece_images):
     figure = ET.Element("figure", {
         "class": "fen-board-figure", "data-fen": position, "data-game": game, "data-prefix": prefix,
         "data-grid": " ".join(f"{n:g}" for n in grid),
-        "data-label": style.label, "data-light": style.light,
+        **text,
     })
     if board_image:
         figure.set("data-board-art", "")
+    if isinstance(board_theme, str):
+        figure.set("data-board-style", board_theme)
+    if isinstance(piece_theme, str):
+        figure.set("data-pieces-style", piece_theme)
     surface = ET.SubElement(figure, "div", {"class": "fen-board-surface"})
     svg = ET.SubElement(surface, "svg", {
         "xmlns": "http://www.w3.org/2000/svg", "viewBox": f"0 0 {width:g} {height:g}",
@@ -241,10 +267,11 @@ def diagram(board, position, game, prefix, label, board_image, piece_images):
 
 
 class BoardTreeprocessor(Treeprocessor):
-    def __init__(self, md, catalog, sounds):
+    def __init__(self, md, catalog, sounds, language):
         super().__init__(md)
         self.catalog = catalog
         self.sounds = sounds
+        self.language = language
 
     def run(self, root):
         count = 0
@@ -270,32 +297,37 @@ class BoardTreeprocessor(Treeprocessor):
             except ValueError as error:
                 raise PluginError(f'{syntax} 局面图 FEN 无效（{value}）：{error}') from error
             style = BOARD_TYPES[game]
-            board_image, piece_images = self.catalog.select(game, classes)
-            label = f"{style.label} · {style.light if turn == 'w' else '黑'}方走棋"
+            board_theme, piece_theme = self.catalog.select(game, classes)
+            text = position_text(game, self.language)
+            label = f"{text['data-label']} · {text[f'data-turn-{turn}']}"
             for child in list(title):
                 title.remove(child)
             title.text = None
-            king_icons(title, style, piece_images)
-            heading = ET.SubElement(title, "span", {"class": "fen-board-title"})
+            king_icons(title, style, piece_theme)
+            heading = ET.SubElement(title, "span", {"class": "fen-board-title", "lang": text["lang"]})
             if title_tag == "summary":
-                heading.text = "Position" if game == "chess" else "局面"
+                heading_language = self.language or ("en" if game == "chess" else "zh")
+                locale = POSITION_LOCALES.get(heading_language)
+                heading.text = locale.title if locale else "局面"
+                heading.set("lang", heading_language)
             else:
                 heading.text = label
             block.set("class", " ".join([*classes, "fen-board"]))
             block.set("data-turn", turn)
             count += 1
-            figure = diagram(board, position, game, f"fen-board-{count}", label, board_image, piece_images)
+            figure = diagram(board, position, game, f"fen-board-{count}", label, board_theme, piece_theme, text)
             for event, filename in self.sounds.items():
                 figure.set(f"data-sound-{event}", filename)
             block.insert(1, figure)
 
 
 class BoardExtension(Extension):
-    def __init__(self, catalog=None, sounds=None):
+    def __init__(self, catalog=None, sounds=None, language=None):
         super().__init__()
         self.catalog = catalog if catalog is not None else ThemeCatalog()
         self.sounds = sounds or {}
+        self.language = language
 
     def extendMarkdown(self, md):
         # Process parsed admonitions. Fenced and inline examples stay literal.
-        md.treeprocessors.register(BoardTreeprocessor(md, self.catalog, self.sounds), "fen_board", 15)
+        md.treeprocessors.register(BoardTreeprocessor(md, self.catalog, self.sounds, self.language), "fen_board", 15)

@@ -1,4 +1,4 @@
-"""Load opt-in artwork packs from the site author's filesystem."""
+"""Resolve built-in styles and site-provided artwork."""
 
 from dataclasses import dataclass
 import json
@@ -13,6 +13,10 @@ from mkdocs.exceptions import PluginError
 THEME_NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
 IMAGE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.(?:svg|png|jpg|jpeg|gif|webp)", re.IGNORECASE)
 DEFAULT = "default"
+BUILTIN_STYLES = {
+    "xiang": {"board": ("wood", "green"), "pieces": ("ivory", "ink", "wood")},
+    "chess": {"board": ("wood", "green"), "pieces": ("ivory", "ink")},
+}
 
 
 @dataclass(frozen=True)
@@ -131,9 +135,11 @@ class ThemeCatalog:
             return None
         theme = self.themes.get(name) if isinstance(name, str) else None
         value = getattr(theme, kind) if theme and theme.game == game else None
-        if value is None:
-            raise PluginError(f"chess {game}: {name!r} has no compatible {kind} artwork")
-        return value
+        if value is not None:
+            return value
+        if name in BUILTIN_STYLES.get(game, {}).get(kind, ()):
+            return name
+        raise PluginError(f"chess {game}: {name!r} has no compatible {kind} artwork")
 
     def select(self, game, classes):
         result = []

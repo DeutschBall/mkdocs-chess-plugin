@@ -5,52 +5,25 @@ site_name: FEN 棋盘示例
 plugins:
   - search
   - chess:
-      # 注册自定义棋盘或棋子主题。名称使用小写字母、数字和连字符，
-      # 且以字母或数字开头。default 是插件内置样式的保留名。
-      # 路径相对于本配置文件，指向实际存在的 JSON 素材清单。
-      # 下列主题已在预览中接入，清单和图片需由站点自行提供。
-      themes: {}
-        # 启用时删除上面的 {}，并取消所需条目的注释。
-        # tiantian: themes/tiantian/theme.json  # 天天象棋经典木纹棋盘、灰白棋子
-        # tiantian-heibai: themes/tiantian-heibai/theme.json  # 天天象棋黑底白字棋子
-        # tiantian-wood: themes/tiantian-wood/theme.json  # 天天象棋木质棋子
-        # xqwizard: themes/xqwizard/theme.json  # 象棋巫师木纹棋盘、红蓝棋子
-        # xiangqicom: themes/xiangqicom/theme.json  # Xiangqi.com 木纹棋盘、红黑白字棋子
-        # chesscom: themes/chesscom/theme.json  # Chess.com 绿白棋盘、Neo 棋子
+      # 候选：zh（中文）、en（英语）、ru（俄语）、vi（越南语）
+      #       ko（韩语）、ja（日语）、de（德语）、fr（法语）
+      language: zh
 
-      # 两种棋类分别配置棋盘和棋子。每项可用 default 或已注册的同棋种主题名。
-      # 如需自定义主题，先在 themes 注册，再把相应的 default 改成主题名。
+      # 两种棋类分别选择内置棋盘和棋子。省略的选项使用 default。
       defaults:
         xiang:
-          # board 候选项：default、tiantian、xqwizard、xiangqicom
-          board: default
-          # pieces 候选项：default、tiantian、tiantian-heibai、tiantian-wood、xqwizard、xiangqicom
-          pieces: default
+          # board 候选：default（经典）、wood（木纹）、green（青绿）
+          board: wood
+          # pieces 候选：default（经典）、ivory（象牙白）、ink（墨黑）、wood（木色）
+          pieces: ivory
         chess:
-          # board 候选项：default、chesscom
-          board: default
-          # pieces 候选项：default、chesscom
-          pieces: default
+          # board 候选：default（经典）、wood（木纹）、green（绿白格）
+          board: green
+          # pieces 候选：default（经典）、ivory（象牙白与深棕）、ink（黑白）
+          pieces: ivory
 
-      # move 对应普通走子，capture 对应吃子。省略的事件静音。
-      # 支持 MP3、Ogg、WAV。路径相对于本配置文件。
-      sounds: {}
-        # 当前音效候选为 Chess.com 默认音效，音频文件需由站点自行提供。
-        # 启用时删除上面的 {}，并取消下面两行的注释。
-        # move: sounds/chesscom/move-self.ogg
-        # capture: sounds/chesscom/capture.ogg
-        # 后续加入其他音效套装时，将 move 和 capture 换成对应文件路径。
+      # 候选：chesscom（Chess.com）、tiantian（天天象棋）。省略时选 chesscom。
+      sounds: chesscom
 
 # 单个 Markdown 棋盘可用 board-<主题名> 和 pieces-<主题名> 覆盖站点默认值。
-# 例如 ??? xiang board-xiangqicom pieces-default "FEN"
-#
-# theme.json 字段速查
-# - game 为 xiang 或 chess。board 和 pieces 至少提供一项。
-# - board.image 是棋盘图文件名，board.size 是 [宽, 高]。
-# - board.origin 是左上落点的 [x, y]，board.step 是横纵间距 [dx, dy]。
-#   棋盘坐标以图内像素为单位。象棋取交叉点，国际象棋取格子中心。
-# - pieces.images 将该棋种的全部 FEN 棋子字母映射到图片文件名。
-#   xiang 使用 KABNRCPkabnrcp，chess 使用 KQRBNPkqrbnp。
-# - pieces.scale 按落点间距缩放，默认 1。pieces.offset 为 [横向, 纵向] 偏移，
-#   单位为落点间距，默认 [0, 0]。正值向右或向下。
-# - 图片与 theme.json 放在同一目录，支持 SVG、PNG、JPEG、GIF、WebP。
+# 例如 ??? xiang board-green pieces-ink "FEN"

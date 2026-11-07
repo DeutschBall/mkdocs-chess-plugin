@@ -7,10 +7,11 @@ import re
 
 from mkdocs.config import config_options
 from mkdocs.exceptions import PluginError
-from mkdocs.plugins import BasePlugin
+from mkdocs.plugins import BasePlugin, get_plugin_logger
 from mkdocs.structure.files import File
 from mkdocs.utils import get_relative_url
 
+from .localization import LANGUAGES
 from .markdown import BOARD_TYPES, BoardExtension
 from .themes import ThemeCatalog
 
@@ -18,37 +19,60 @@ from .themes import ThemeCatalog
 ASSET_PREFIX = "assets/mkdocs-chess-plugin/"
 THEME_HREF = re.compile(r'href="fen-board-asset:(themes/[a-z0-9-]+/[A-Za-z0-9._-]+)"')
 ASSETS = (
-    "board.css", "loader.js", "board.mjs", "xiangqi-rules.mjs",
+    "board.css", "loader.js", "board.mjs", "locales.mjs", "xiangqi-rules.mjs",
     "vendor/chess-1.4.0.mjs", "vendor/chess.js-LICENSE.txt",
 )
+SOUND_PRESETS = ("chesscom", "tiantian")
+SOUND_EVENTS = ("move", "capture")
+log = get_plugin_logger(__name__)
+
+
+def load_sounds(root, option):
+    prefix = ""
+    if isinstance(option, str):
+        if option not in SOUND_PRESETS:
+            raise PluginError(f"Unknown chess sound preset {option!r}. Choose {', '.join(SOUND_PRESETS)}.")
+        pack = root / "sound-packs" / option
+        if not pack.exists():
+            log.info("Sound pack '%s' is unavailable. Building without move sounds.", option)
+            return {}
+        prefix = f"{option}/"
+        option = {event: str(pack / f"{event}.ogg") for event in SOUND_EVENTS}
+
+    sounds = {}
+    for event, source in option.items():
+        if event not in SOUND_EVENTS or not isinstance(source, str):
+            raise PluginError("chess sounds accepts move and capture file paths")
+        path = root / source
+        suffix = path.suffix.lower()
+        if suffix not in (".mp3", ".ogg", ".wav") or not path.is_file():
+            raise PluginError(f"chess sound {event!r} must be an existing MP3, Ogg or WAV file: {source}")
+        sounds[event] = (prefix + event + suffix, path.resolve())
+    return sounds
 
 
 class ChessPlugin(BasePlugin):
     config_scheme = (
+        ("language", config_options.Optional(config_options.Choice(LANGUAGES))),
         ("themes", config_options.Type(dict, default={})),
         ("defaults", config_options.Type(dict, default={})),
-        ("sounds", config_options.Type(dict, default={})),
+        ("sounds", config_options.Type((str, dict), default="chesscom")),
     )
 
     def on_config(self, config):
         self.catalog = ThemeCatalog()
         root = Path(config.config_file_path).parent if config.config_file_path else Path.cwd()
         self.catalog.load(root, self.config.get("themes", {}), self.config.get("defaults", {}), BOARD_TYPES)
-        self.sounds = {}
-        for event, source in self.config.get("sounds", {}).items():
-            if event not in ("move", "capture") or not isinstance(source, str):
-                raise PluginError("chess sounds accepts move and capture file paths")
-            path = root / source
-            suffix = path.suffix.lower()
-            if suffix not in (".mp3", ".ogg", ".wav") or not path.is_file():
-                raise PluginError(f"chess sound {event!r} must be an existing MP3, Ogg or WAV file: {source}")
-            self.sounds[event] = (event + suffix, path.resolve())
+        self.sounds = load_sounds(root, self.config.get("sounds", "chesscom"))
         extensions = config.markdown_extensions
         for extension in ("admonition", "pymdownx.details"):
             if extension not in extensions:
                 extensions.append(extension)
         extensions[:] = [extension for extension in extensions if not isinstance(extension, BoardExtension)]
-        extensions.append(BoardExtension(self.catalog, {event: name for event, (name, _) in self.sounds.items()}))
+        extensions.append(BoardExtension(
+            self.catalog, {event: name for event, (name, _) in self.sounds.items()},
+            language=self.config.get("language"),
+        ))
 
         for assets, name in ((config.extra_css, "board.css"), (config.extra_javascript, "loader.js")):
             uri = ASSET_PREFIX + name

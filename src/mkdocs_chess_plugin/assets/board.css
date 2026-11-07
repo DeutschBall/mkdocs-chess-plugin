@@ -104,6 +104,33 @@
 .fen-board-chess-light { fill: #fffdf1; stroke: #253432; }
 .fen-board-chess-dark { fill: #233430; stroke: #e2e9d9; }
 
+.fen-board-figure[data-board-style="wood"] .fen-board-surface > svg {
+  background: repeating-linear-gradient(98deg, #88572d13 0 1px, transparent 1px 6px), #e8c69b;
+  color: #664324;
+}
+[data-board-style="wood"] .fen-board-tile-light { fill: #f6e3c4c9; }
+[data-board-style="wood"] .fen-board-tile-dark { fill: #854b26a6; }
+.fen-board-figure[data-board-style="green"] .fen-board-surface > svg {
+  background: #cddbbd;
+  color: #344b32;
+}
+[data-board-style="green"] .fen-board-tile-light { fill: #edf0d5; }
+[data-board-style="green"] .fen-board-tile-dark { fill: #698c58; }
+
+[data-pieces-style="ivory"] .fen-board-disc { fill: #f6f0e2; stroke: #7f7565; }
+[data-pieces-style="ivory"] .fen-board-chess-light { fill: #fff4d9; stroke: #61432e; }
+[data-pieces-style="ivory"] .fen-board-chess-dark { fill: #4d3225; stroke: #f2dbb4; }
+
+[data-pieces-style="ink"] .fen-board-disc { fill: #232729; stroke: currentColor; }
+[data-pieces-style="ink"] .fen-board-xiang-light { color: #ff9e8c; }
+[data-pieces-style="ink"] .fen-board-xiang-dark { color: #faf5e8; }
+[data-pieces-style="ink"] .fen-board-chess-light { fill: #f4f5f1; stroke: #171a1d; }
+[data-pieces-style="ink"] .fen-board-chess-dark { fill: #171a1d; stroke: #f4f5f1; }
+
+[data-pieces-style="wood"] .fen-board-disc { fill: #d6ab71; stroke: #825531; }
+[data-pieces-style="wood"] .fen-board-xiang-light { color: #8b251e; }
+[data-pieces-style="wood"] .fen-board-xiang-dark { color: #2f2419; }
+
 .fen-board-square {
   appearance: none;
   position: absolute;
